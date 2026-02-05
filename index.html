@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PM Wheel — выбор ПМа на спринт</title>
+    <style>
+        :root {
+            --bg: #0b0f19;
+            --card: #121a2a;
+            --text: #e9eefc;
+            --muted: #9fb0d0;
+            --accent: #7aa2ff;
+            --danger: #ff6b6b;
+            --ok: #51cf66;
+            --shadow: 0 10px 30px rgba(0,0,0,.35);
+            --radius: 16px;
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        html {
+            background:
+                    radial-gradient(1200px 700px at 20% 5%, rgba(122,162,255,.48), transparent 60%),
+                    radial-gradient(950px 650px at 85% 15%, rgba(81,207,102,.38), transparent 55%),
+                    radial-gradient(900px 700px at 70% 90%, rgba(255,170,220,.30), transparent 55%),
+                    radial-gradient(800px 650px at 10% 85%, rgba(255,214,102,.22), transparent 60%),
+                    #0b0f19;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        body {
+            margin: 0;
+            min-height: 100%;
+            background: transparent;
+            color: var(--text);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        }
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px 16px 40px;
+            display: grid;
+            grid-template-columns: 1.2fr .8fr;
+            gap: 16px;
+        }
+        @media (max-width: 900px) {
+            .wrap { grid-template-columns: 1fr; }
+        }
+        .card {
+            background: rgba(18,26,42,.92);
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 16px;
+        }
+        h1 {
+            margin: 0 0 8px;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: .2px;
+        }
+        .sub {
+            margin: 0 0 14px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .stage {
+            display: grid;
+            grid-template-columns: 1fr;
+            place-items: center;
+            gap: 12px;
+            padding: 12px 8px 16px;
+        }
+        canvas {
+            width: min(520px, 92vw);
+            height: min(520px, 92vw);
+            max-width: 520px;
+            max-height: 520px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.03);
+        }
+        .pointer {
+            width: 0; height: 0;
+            border-left: 14px solid transparent;
+            border-right: 14px solid transparent;
+            border-top: 22px solid rgba(233,238,252,.95);
+            filter: drop-shadow(0 6px 10px rgba(0,0,0,.45));
+            margin-top: -8px;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+        button {
+            border: 1px solid rgba(255,255,255,.12);
+            background: rgba(255,255,255,.06);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform .06s ease, background .2s ease, border-color .2s ease;
+            user-select: none;
+        }
+        button:hover { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.18); }
+        button:active { transform: translateY(1px); }
+        button.primary {
+            background: linear-gradient(135deg, rgba(122,162,255,.35), rgba(122,162,255,.15));
+            border-color: rgba(122,162,255,.5);
+        }
+        button.danger {
+            background: linear-gradient(135deg, rgba(255,107,107,.25), rgba(255,107,107,.10));
+            border-color: rgba(255,107,107,.45);
+        }
+        button:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        label {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            color: var(--muted);
+            font-size: 14px;
+        }
+        input[type="checkbox"] { transform: scale(1.1); }
+        textarea {
+            width: 100%;
+            min-height: 370px;
+            resize: vertical;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,.10);
+            background: rgba(0,0,0,.18);
+            color: var(--text);
+            padding: 12px;
+            outline: none;
+            line-height: 1.35;
+        }
+        textarea:focus { border-color: rgba(122,162,255,.55); }
+        .winner {
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px dashed rgba(255,255,255,.16);
+            background: rgba(0,0,0,.12);
+        }
+        .winner .t { color: var(--muted); font-size: 12px; }
+        .winner .name {
+            font-size: 20px;
+            font-weight: 900;
+            margin-top: 2px;
+        }
+        .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+        .history {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 8px;
+        }
+        .history li {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,.08);
+            background: rgba(255,255,255,.03);
+            font-size: 14px;
+        }
+        .pill {
+            font-size: 12px;
+            color: rgba(233,238,252,.9);
+            background: rgba(122,162,255,.18);
+            border: 1px solid rgba(122,162,255,.28);
+            padding: 3px 8px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .small {
+            font-size: 12px;
+            color: var(--muted);
+        }
+        .hr {
+            height: 1px;
+            background: rgba(255,255,255,.06);
+            margin: 10px 0;
+        }
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 18px;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,.7);
+            border: 1px solid rgba(255,255,255,.12);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s ease;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+
+<body>
+<div class="wrap">
+    <div class="card">
+        <img src="AstonLogo_light.svg" style="width: 200px; margin-bottom: 20px" />
+        <h1>Колесо выбора ПМа на следующий спринт</h1>
+        <p class="sub">
+            Вставь список участников справа → нажми <b>Крутить</b>.
+        </p>
+
+        <div class="stage">
+            <div class="pointer" aria-hidden="true"></div>
+            <canvas id="wheel" width="900" height="900"></canvas>
+
+            <div class="controls">
+                <button id="spinBtn" class="primary">Крутить</button>
+                <button id="shuffleBtn">Перемешать</button>
+                <button id="resetBtn" class="danger">Сброс</button>
+            </div>
+            <div class="small" id="status"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="grid">
+            <div>
+                <label for="names">
+                    Участники (по одному в строке или через запятую)
+                </label>
+                <textarea id="names" spellcheck="false"></textarea>
+                <div class="row" style="margin-top:10px;">
+                    <label title="Выбранные люди убираются из колеса до полного прохода">
+                        <input id="noRepeat" type="checkbox" checked />
+                        Без повторов, пока все не выпадут
+                    </label>
+                </div>
+                <div class="hint">Подсказка: можешь вставить из Slack/Teams — лишние пробелы уберу.</div>
+            </div>
+
+            <div class="winner" id="winnerBox">
+                <div class="t">ПМ на следующий спринт:</div>
+                <div class="name" id="winnerName">—</div>
+                <div class="hint" id="winnerHint"></div>
+            </div>
+
+            <div class="hr"></div>
+
+            <div>
+                <div class="row" style="justify-content: space-between; align-items:center;">
+                    <div style="font-weight:800;">История</div>
+                    <button id="clearHistoryBtn" class="danger" style="padding:8px 10px;">Очистить историю</button>
+                </div>
+                <div class="hint">Пишем результат каждого спина (с датой/временем).</div>
+                <div style="height:10px;"></div>
+                <ul class="history" id="history"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+
+    const spinBtn = document.getElementById('spinBtn');
+    const shuffleBtn = document.getElementById('shuffleBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+    const namesEl = document.getElementById('names');
+    const noRepeatEl = document.getElementById('noRepeat');
+
+    const winnerNameEl = document.getElementById('winnerName');
+    const winnerHintEl = document.getElementById('winnerHint');
+    const historyEl = document.getElementById('history');
+    const statusEl = document.getElementById('status');
+    const toastEl = document.getElementById('toast');
+
+    const STORAGE_KEY = 'pm_wheel_state_v1';
+
+    let rotation = 0;          // radians
+    let isSpinning = false;
+    let participants = [];
+    let available = [];        // for no-repeat mode
+    let history = [];
+
+    function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add('show');
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2000);
+    }
+
+    function parseNames(text) {
+        return text
+            .split(/[\n,]+/g)
+            .map(s => s.trim())
+            .filter(Boolean);
+    }
+
+    function uniq(arr) {
+        const seen = new Set();
+        const out = [];
+        for (const x of arr) {
+            const key = x.toLowerCase();
+            if (!seen.has(key)) { seen.add(key); out.push(x); }
+        }
+        return out;
+    }
+
+    function hslColor(i, n) {
+        // пастель: высокая яркость, средняя насыщенность
+        const hue = (i * (360 / Math.max(1, n))) % 360;
+        const sat = 55;  // 45–65 хорошо смотрится
+        const lig = 78;  // 72–85 пастельно
+        return `hsl(${hue} ${sat}% ${lig}%)`;
+    }
+
+    function drawWheel() {
+        const list = getActiveList();
+        const n = list.length;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Background circle
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const r = Math.min(cx, cy) - 18;
+
+        // Outer ring
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 8, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,.04)';
+        ctx.fill();
+
+        // If empty
+        if (n === 0) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(233,238,252,.8)';
+            ctx.font = '700 40px system-ui';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Добавь участников →', cx, cy);
+            ctx.restore();
+            return;
+        }
+
+        const seg = (Math.PI * 2) / n;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rotation);
+
+        for (let i = 0; i < n; i++) {
+            const start = i * seg;
+            const end = (i + 1) * seg;
+
+            // Slice
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, r, start, end);
+            ctx.closePath();
+            ctx.fillStyle = hslColor(i, n);
+            ctx.fill();
+
+            // Divider
+            ctx.strokeStyle = 'rgba(0,0,0,.25)';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+
+            // Text
+            const label = list[i];
+            const mid = start + seg / 2;
+            ctx.save();
+            ctx.rotate(mid);
+            ctx.translate(r * 0.68, 0);
+            // ctx.rotate(Math.PI / 2);
+
+            ctx.fillStyle = 'rgba(0,0,0,.78)';
+            ctx.font = '800 25px system-ui';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const max = 18;
+            const short = label.length > max ? label.slice(0, max - 1) + '…' : label;
+            ctx.fillText(short, 0, 0);
+
+            ctx.restore();
+        }
+
+        // Center cap
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.18, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(11,15,25,.85)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.10)';
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    function normalizeAngle(a) {
+        const tau = Math.PI * 2;
+        return ((a % tau) + tau) % tau;
+    }
+
+    function getActiveList() {
+        return noRepeatEl.checked ? available : participants;
+    }
+
+    function pickIndexFromRotation(n) {
+        // pointer at top = -PI/2
+        const seg = (Math.PI * 2) / n;
+        const a = normalizeAngle(-Math.PI / 2 - rotation);
+        return Math.floor(a / seg);
+    }
+
+    function secureRand() {
+        const buf = new Uint32Array(1);
+        crypto.getRandomValues(buf);
+        return buf[0] / 2**32;
+    }
+
+    function setStatus(msg) {
+        statusEl.textContent = msg || '';
+    }
+
+    function saveState() {
+        const data = {
+            rotation,
+            participants,
+            available,
+            history,
+            noRepeat: !!noRepeatEl.checked,
+            namesText: namesEl.value
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function loadState() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return false;
+            const data = JSON.parse(raw);
+
+            rotation = typeof data.rotation === 'number' ? data.rotation : 0;
+            participants = Array.isArray(data.participants) ? data.participants : [];
+            available = Array.isArray(data.available) ? data.available : [];
+            history = Array.isArray(data.history) ? data.history : [];
+            noRepeatEl.checked = !!data.noRepeat;
+            namesEl.value = typeof data.namesText === 'string' ? data.namesText : participants.join('\n');
+
+            // If noRepeat on but available empty — restore
+            if (noRepeatEl.checked && available.length === 0 && participants.length > 0) {
+                available = [...participants];
+            }
+
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    function renderHistory() {
+        historyEl.innerHTML = '';
+        if (history.length === 0) {
+            const li = document.createElement('li');
+            li.innerHTML = `<span style="color: var(--muted);">Пока пусто</span><span class="pill">0</span>`;
+            historyEl.appendChild(li);
+            return;
+        }
+
+        history.slice().reverse().forEach((item, idx) => {
+            const li = document.createElement('li');
+            const left = document.createElement('div');
+            left.textContent = item.name;
+
+            const right = document.createElement('div');
+            right.className = 'pill';
+            right.textContent = new Date(item.ts).toLocaleString('ru-RU');
+
+            li.appendChild(left);
+            li.appendChild(right);
+            historyEl.appendChild(li);
+        });
+    }
+
+    function syncFromTextarea() {
+        const list = uniq(parseNames(namesEl.value));
+        participants = list;
+
+        if (noRepeatEl.checked) {
+            // Keep available subset if possible; if incompatible — reset
+            const set = new Set(participants.map(x => x.toLowerCase()));
+            const filtered = available.filter(x => set.has(x.toLowerCase()));
+            available = filtered.length ? filtered : [...participants];
+        } else {
+            available = [...participants];
+        }
+
+        saveState();
+        drawWheel();
+    }
+
+    function announceWinner(name) {
+        winnerNameEl.textContent = name;
+        if (noRepeatEl.checked) {
+            winnerHintEl.textContent = `Осталось в мешке: ${available.length} из ${participants.length}`;
+        } else {
+            winnerHintEl.textContent = '';
+        }
+    }
+
+    function spin() {
+        const list = getActiveList();
+        const n = list.length;
+        if (n < 2) {
+            toast('Нужно минимум 2 участника');
+            return;
+        }
+        if (isSpinning) return;
+
+        isSpinning = true;
+        spinBtn.disabled = true;
+        shuffleBtn.disabled = true;
+
+        setStatus('Крутим…');
+
+        const fullTurns = 6 + Math.floor(secureRand() * 6); // 6..11
+        const extra = secureRand() * Math.PI * 2;          // 0..2π
+        const target = rotation + fullTurns * Math.PI * 2 + extra;
+
+        const start = rotation;
+        const duration = 2600 + Math.floor(secureRand() * 1000); // 2.6..3.6 sec
+        const t0 = performance.now();
+
+        function easeOutCubic(t) {
+            return 1 - Math.pow(1 - t, 3);
+        }
+
+        function frame(now) {
+            const t = Math.min(1, (now - t0) / duration);
+            rotation = start + (target - start) * easeOutCubic(t);
+            drawWheel();
+
+            if (t < 1) {
+                requestAnimationFrame(frame);
+            } else {
+                // finalize pick
+                const list2 = getActiveList();
+                const n2 = list2.length;
+                const idx = pickIndexFromRotation(n2);
+                const winner = list2[idx];
+
+                // apply no-repeat
+                if (noRepeatEl.checked) {
+                    available = available.filter((x, i) => i !== idx);
+                    if (available.length === 0 && participants.length > 0) {
+                        // refill for next round
+                        available = [...participants];
+                        toast('Прошли всех — мешок обновлён');
+                    }
+                }
+
+                history.push({ name: winner, ts: Date.now() });
+                if (history.length > 50) history = history.slice(-50);
+
+                announceWinner(winner);
+                renderHistory();
+
+                setStatus('Готово ✅');
+                isSpinning = false;
+                spinBtn.disabled = false;
+                shuffleBtn.disabled = false;
+
+                saveState();
+            }
+        }
+
+        requestAnimationFrame(frame);
+    }
+
+    function shuffleParticipants() {
+        const list = uniq(parseNames(namesEl.value));
+        if (list.length < 2) return;
+
+        for (let i = list.length - 1; i > 0; i--) {
+            const j = Math.floor(secureRand() * (i + 1));
+            [list[i], list[j]] = [list[j], list[i]];
+        }
+        namesEl.value = list.join('\n');
+        syncFromTextarea();
+        toast('Перемешано');
+    }
+
+    function resetAll() {
+        rotation = 0;
+        participants = uniq(parseNames(namesEl.value));
+        available = [...participants];
+        history = [];
+        announceWinner('—');
+        renderHistory();
+        saveState();
+        drawWheel();
+        toast('Сброшено');
+    }
+
+    // Init defaults
+    const defaultNames = [
+        'Михайловский Александр',
+        'Нестеренко Полина',
+        'Данилова Екатерина',
+        'Антипенко Ирина',
+        'Евсеенко Виктор',
+        'Краснов Денис',
+        'Владимир Волков',
+        'Лавринович Андрей',
+        'Бохон Александр',
+        'Егор Драгель',
+        'Навоев Павел',
+        'Ворохобко Анна',
+        'Маркин Максим',
+        'Башков Александр',
+        'Вильчек Павел'
+    ];
+
+    if (!loadState()) {
+        namesEl.value = defaultNames.join('\n');
+        syncFromTextarea();
+        renderHistory();
+    } else {
+        syncFromTextarea();
+        renderHistory();
+        drawWheel();
+    }
+
+    // Events
+    namesEl.addEventListener('input', () => {
+        // debounce-ish
+        clearTimeout(namesEl._t);
+        namesEl._t = setTimeout(syncFromTextarea, 200);
+    });
+    noRepeatEl.addEventListener('change', () => {
+        // When toggle changed, rebuild available appropriately
+        syncFromTextarea();
+        announceWinner(winnerNameEl.textContent || '—');
+        toast(noRepeatEl.checked ? 'Режим без повторов: ON' : 'Режим без повторов: OFF');
+    });
+
+    spinBtn.addEventListener('click', spin);
+    shuffleBtn.addEventListener('click', shuffleParticipants);
+    resetBtn.addEventListener('click', resetAll);
+    clearHistoryBtn.addEventListener('click', () => {
+        history = [];
+        renderHistory();
+        saveState();
+        toast('История очищена');
+    });
+
+    // first draw
+    drawWheel();
+</script>
+</body>
+</html>
