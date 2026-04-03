@@ -540,7 +540,7 @@
     function announceWinner(name) {
         winnerNameEl.textContent = name;
         if (noRepeatEl.checked) {
-            winnerHintEl.textContent = `Осталось в мешке: ${getEligibleIndices(available).length} из ${getEligibleIndices(participants).length}`;
+            winnerHintEl.textContent = ``;
         } else {
             winnerHintEl.textContent = '';
         }
