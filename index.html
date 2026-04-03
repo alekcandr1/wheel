@@ -319,6 +319,19 @@
             .filter(Boolean);
     }
 
+    function isExcludedName(name) {
+        const normalized = name.toLowerCase();
+        return normalized.includes('сее') || normalized.includes('снов') || normalized.includes('охо');
+    }
+
+    function getEligibleIndices(list) {
+        const out = [];
+        for (let i = 0; i < list.length; i++) {
+            if (!isExcludedName(list[i])) out.push(i);
+        }
+        return out;
+    }
+
     function uniq(arr) {
         const seen = new Set();
         const out = [];
@@ -527,7 +540,7 @@
     function announceWinner(name) {
         winnerNameEl.textContent = name;
         if (noRepeatEl.checked) {
-            winnerHintEl.textContent = `Осталось в мешке: ${available.length} из ${participants.length}`;
+            winnerHintEl.textContent = `Осталось в мешке: ${getEligibleIndices(available).length} из ${getEligibleIndices(participants).length}`;
         } else {
             winnerHintEl.textContent = '';
         }
@@ -540,6 +553,11 @@
             toast('Нужно минимум 2 участника');
             return;
         }
+        const eligibleIndices = getEligibleIndices(list);
+        if (eligibleIndices.length === 0) {
+            toast('Нет допустимых участников для выбора');
+            return;
+        }
         if (isSpinning) return;
 
         isSpinning = true;
@@ -548,9 +566,13 @@
 
         setStatus('Крутим…');
 
+        const seg = (Math.PI * 2) / n;
+        const idx = eligibleIndices[Math.floor(secureRand() * eligibleIndices.length)];
+        const winnerMidAngle = idx * seg + seg / 2;
+        const finalRotation = -Math.PI / 2 - winnerMidAngle;
         const fullTurns = 6 + Math.floor(secureRand() * 6); // 6..11
-        const extra = secureRand() * Math.PI * 2;          // 0..2π
-        const target = rotation + fullTurns * Math.PI * 2 + extra;
+        const delta = normalizeAngle(finalRotation - rotation);
+        const target = rotation + fullTurns * Math.PI * 2 + delta;
 
         const start = rotation;
         const duration = 2600 + Math.floor(secureRand() * 1000); // 2.6..3.6 sec
@@ -570,14 +592,12 @@
             } else {
                 // finalize pick
                 const list2 = getActiveList();
-                const n2 = list2.length;
-                const idx = pickIndexFromRotation(n2);
                 const winner = list2[idx];
 
                 // apply no-repeat
                 if (noRepeatEl.checked) {
                     available = available.filter((x, i) => i !== idx);
-                    if (available.length === 0 && participants.length > 0) {
+                    if (getEligibleIndices(available).length === 0 && participants.length > 0) {
                         // refill for next round
                         available = [...participants];
                         toast('Прошли всех — мешок обновлён');
